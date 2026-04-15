@@ -32,15 +32,39 @@ def standardise_columns(df, source):
     })
     
     df_renamed['source'] = source # add source column e.g. plex_movies, plex_tv, imdb_movies, imdb_tv, local_movies, local_tv
-    # print(df_renamed['type'])
-    # print(source)
+
     if 'tv' in source.lower():
         df_renamed['type'] = 'tv_show'
-    
-    if 'movie' in source.lower():
+    elif 'movie' in source.lower():
         df_renamed['type'] = 'movie'
 
     return df_renamed
+
+
+def get_input_files(args):
+    """ Collect provided file paths from arguments and return them as a list of tuples. Exits if no files were provided. """
+    file_count = 0
+    input_files = [] # e.g. [('imdb_tv', 'path/to/imdb_tv.csv'), ('plex_movies', 'path/to/plex_movies.csv')]
+    for key, value in vars(args).items():
+        if value is not None:
+            file_count += 1
+            input_files.append((key, value))
+
+    if file_count == 0:
+        print('Please add at least one file.')
+        sys.exit()
+
+    return input_files
+
+
+def load_all_files(input_files):
+    """ Load and standardise all provided CSV files. Returns a list of DataFrames. """
+    all_dataframes = []
+    for source, filepath in input_files:
+        df = load_csv(filepath)
+        standardised_df = standardise_columns(df, source)
+        all_dataframes.append(standardised_df)
+    return all_dataframes
 
 
 # main logic
@@ -54,19 +78,5 @@ parser.add_argument('--local-tv', help='add the path of the exported (tv show) f
 args = parser.parse_args()
 
 
-# Exit if no files were provided
-file_count = 0
-for key, value in vars(args).items():
-    if value is not None:
-        file_count += 1
-
-if file_count == 0:
-    print('Please add at least one file.')
-    sys.exit()
-
-
-df = load_csv(args.imdb_tv)
-
-imdb_tv = standardise_columns(df, 'imdb_tv')
-# print(imdb_tv)
-print(imdb_tv[['type']])
+input_files = get_input_files(args)
+loaded_files = load_all_files(input_files)
