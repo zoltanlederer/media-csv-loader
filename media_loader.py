@@ -83,14 +83,23 @@ input_files = get_input_files(args)
 loaded_files = load_all_files(input_files)
 # print(loaded_files)
 
+# concat = pd.concat([loaded_files[0], loaded_files[1]])
+
+def merge_dataframes(loaded_files):
+    """ Merge a list of DataFrames into one combined DataFrame. """
+    return pd.concat(loaded_files)
+
+combined_df = merge_dataframes(loaded_files)
+print(combined_df)
+
 # for df in loaded_files:
 #     print(df['type'])
 
 # how many DataFrames
-print(len(loaded_files))
+# print(len(loaded_files))
 
-# see each one briefly
-for df in loaded_files:
-    print(df.shape)  # rows and columns
-    print(df.head(2))
-    print()
+# # see each one briefly
+# for df in loaded_files:
+#     print(df.shape)  # rows and columns
+#     print(df.head(2))
+#     print()
