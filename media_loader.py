@@ -29,6 +29,7 @@ def load_csv(filepath):
 def standardise_columns(df, source):
     """ Create the standard column names for the Master CSV """
     df_renamed = df.rename(columns={
+        # IMDB columns
         'Const': 'imdb_id',
         'Title': 'title',
         'Year': 'year',
@@ -36,8 +37,26 @@ def standardise_columns(df, source):
         'IMDb Rating': 'imdb_rating',
         'Runtime (mins)': 'runtime_mins',
         'Title Type': 'type',
+        'Release Date': 'release_date',
+        'Original Title': 'original_title',
+        'Directors': 'directors',
+
+        # Plex columns
         'duration': 'runtime_mins',
-        'summary': 'description'
+        'summary': 'description',
+        'originallyAvailableAt': 'originally_available_at',
+        'seasonCount': 'number_of_seasons',
+        'leafCount': 'number_of_episodes',
+
+        # TMDB columns
+        'id': 'tmdb_id',
+        'name': 'title',
+        'original_name': 'original_title',
+        'overview': 'description',
+        'first_air_date': 'release_date',
+        'episode_run_time': 'runtime_mins',
+        'runtime': 'runtime_mins',
+        'vote_average': 'tmdb_rating',
     })
     
     df_renamed['source'] = SOURCE_MAP.get(source, source) # add source column e.g. plex, imdb, tmdb
@@ -102,7 +121,7 @@ combined_df = merge_dataframes(loaded_files)
 # find a title that exists in both sources
 pd.set_option('display.max_columns', None)
 # print(combined_df[combined_df['imdb_id'] == 'tt1845307'])
-duplicate = combined_df[combined_df['imdb_id'] == 'tt1845307']
+duplicate = combined_df[combined_df['imdb_id'] == 'tt0848228']
 for idx, row in duplicate.iterrows():
     print(f"\n--- Row {idx} (source: {row['source']}) ---")
     for col, val in row.items():
