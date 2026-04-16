@@ -28,7 +28,8 @@ def standardise_columns(df, source):
         'IMDb Rating': 'imdb_rating',
         'Runtime (mins)': 'runtime_mins',
         'Title Type': 'type',
-        'duration': 'runtime_mins'
+        'duration': 'runtime_mins',
+        'summary': 'description'
     })
     
     df_renamed['source'] = source # add source column e.g. plex_movies, plex_tv, imdb_movies, imdb_tv, local_movies, local_tv
@@ -80,3 +81,16 @@ args = parser.parse_args()
 
 input_files = get_input_files(args)
 loaded_files = load_all_files(input_files)
+# print(loaded_files)
+
+# for df in loaded_files:
+#     print(df['type'])
+
+# how many DataFrames
+print(len(loaded_files))
+
+# see each one briefly
+for df in loaded_files:
+    print(df.shape)  # rows and columns
+    print(df.head(2))
+    print()
