@@ -8,6 +8,14 @@ import sys
 import argparse
 import pandas as pd
 
+SOURCE_MAP = {
+    'plex_movies': 'plex',
+    'plex_tv': 'plex',
+    'imdb_movies': 'imdb',
+    'imdb_tv': 'imdb',
+    'tmdb_movies': 'tmdb',
+    'tmdb_tv': 'tmdb',
+}
 
 def load_csv(filepath):
     """ Load csv file including error handling """
@@ -32,7 +40,7 @@ def standardise_columns(df, source):
         'summary': 'description'
     })
     
-    df_renamed['source'] = source # add source column e.g. plex_movies, plex_tv, imdb_movies, imdb_tv, local_movies, local_tv
+    df_renamed['source'] = SOURCE_MAP.get(source, source) # add source column e.g. plex, imdb, tmdb
 
     if 'tv' in source.lower():
         df_renamed['type'] = 'tv_show'
