@@ -1,7 +1,7 @@
 """
 Media CSV Loader
 
-Takes multiple CSV files from different sources (Plex exports, IMDB list exports, and local folder scans). loads them with pandas, standardises the column names and data types so they match, detects duplicates (titles that appear in both lists), merges everything into one clean master CSV, and saves it. This master file becomes the foundation for all remaining projects.
+Takes multiple CSV files from different sources (Plex exports, IMDB and TMDB list exports), loads them with pandas, standardises the column names and data types so they match, detects duplicates (titles that appear in both lists), merges everything into one clean master CSV, and saves it. This master file becomes the foundation for all remaining projects.
 """
 
 import sys
@@ -68,29 +68,37 @@ def load_all_files(input_files):
     return all_dataframes
 
 
+def merge_dataframes(loaded_files):
+    """ Merge a list of DataFrames into one combined DataFrame. """
+    return pd.concat(loaded_files)
+
+
+
 # main logic
 parser = argparse.ArgumentParser(description='The program creates a master csv file from different sources.')
 parser.add_argument('--plex-movies', help='add the path of the exported (movie) file from plex')
 parser.add_argument('--plex-tv', help='add the path of the exported (tv show) file from plex')
 parser.add_argument('--imdb-movies', help='add the path of the exported (movie) file from imdb')
 parser.add_argument('--imdb-tv', help='add the path of the exported (tv show) file from imdb')
-parser.add_argument('--local-movies', help='add the path of the exported (movie) file from local scan')
-parser.add_argument('--local-tv', help='add the path of the exported (tv show) file from local scan')
+parser.add_argument('--tmdb-movies', help='add the path of the exported (movie) file from tmdb')
+parser.add_argument('--tmdb-tv', help='add the path of the exported (tv show) file from tmdb')
 args = parser.parse_args()
 
 
 input_files = get_input_files(args)
 loaded_files = load_all_files(input_files)
-# print(loaded_files)
-
-# concat = pd.concat([loaded_files[0], loaded_files[1]])
-
-def merge_dataframes(loaded_files):
-    """ Merge a list of DataFrames into one combined DataFrame. """
-    return pd.concat(loaded_files)
-
 combined_df = merge_dataframes(loaded_files)
-print(combined_df)
+
+# print(combined_df)
+
+# find a title that exists in both sources
+pd.set_option('display.max_columns', None)
+# print(combined_df[combined_df['imdb_id'] == 'tt1845307'])
+duplicate = combined_df[combined_df['imdb_id'] == 'tt1845307']
+for idx, row in duplicate.iterrows():
+    print(f"\n--- Row {idx} (source: {row['source']}) ---")
+    for col, val in row.items():
+        print(f"{col}: {val}")
 
 # for df in loaded_files:
 #     print(df['type'])
