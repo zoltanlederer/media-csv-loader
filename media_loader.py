@@ -103,7 +103,7 @@ def merge_dataframes(loaded_files):
 
 
 def handle_duplicates(combined_df):
-    """ Sort rows by source priority and combine duplicates into one row per title. """
+    """ Deduplicate titles across sources, combine best available data into one row per title, update source labels, and drop unwanted columns. """
 
     # Sort by source priority so Plex rows come first, then IMDB, then TMDB
     sorted_df = combined_df.copy()  # copy() creates a new DataFrame — without this, changes would affect the original
