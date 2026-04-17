@@ -17,6 +17,8 @@ SOURCE_MAP = {
     'tmdb_tv': 'tmdb',
 }
 
+SOURCE_PRIORITY = {'plex': 0, 'imdb': 1, 'tmdb': 2}
+
 def load_csv(filepath):
     """ Load csv file including error handling """
     try:
@@ -100,6 +102,50 @@ def merge_dataframes(loaded_files):
     return pd.concat(loaded_files)
 
 
+def handle_duplicates(combined_df):
+    """ Sort rows by source priority and combine duplicates into one row per title. """
+
+    # Sort by source priority so Plex rows come first, then IMDB, then TMDB
+    sorted_df = combined_df.copy()  # copy() creates a new DataFrame — without this, changes would affect the original
+    sorted_df['priority'] = sorted_df['source'].map(SOURCE_PRIORITY)  # map() replaces each source value with its priority number e.g. plex → 0
+    sorted_df = sorted_df.sort_values('priority')  # sort rows so lower priority numbers (Plex) come first
+    sorted_df = sorted_df.drop(columns=['priority'])  # remove the helper column — it was only needed for sorting
+
+    # Collect imdb_ids per source to detect which titles appear in multiple sources
+    plex_ids = set(sorted_df[sorted_df['source'] == 'plex']['imdb_id'])  # filter rows where source is plex, then collect their imdb_ids into a set
+    imdb_ids = set(sorted_df[sorted_df['source'] == 'imdb']['imdb_id'])  # same for imdb
+    tmdb_ids = set(sorted_df[sorted_df['source'] == 'tmdb']['imdb_id'])  # same for tmdb
+
+    # Find overlapping titles between sources
+    plex_and_imdb = plex_ids & imdb_ids  # & on sets returns only values that appear in both (intersection)
+    plex_and_tmdb = plex_ids & tmdb_ids
+    imdb_and_tmdb = imdb_ids & tmdb_ids
+    plex_and_imdb_and_tmdb = plex_ids & imdb_ids & tmdb_ids  # titles that appear in all three sources
+
+    # Split into titles with and without imdb_id — groupby drops NaN keys
+    has_imdb_id = sorted_df[sorted_df['imdb_id'].notna()]  # notna() returns True for non-empty values — keep only rows that have an imdb_id
+    no_imdb_id = sorted_df[sorted_df['imdb_id'].isna()]  # isna() returns True for empty values — keep only rows missing an imdb_id
+
+    # Deduplicate by imdb_id, keeping first non-NaN value per column (Plex data takes priority)
+    has_imdb_id = has_imdb_id.groupby('imdb_id').first()  # group rows by imdb_id and keep the first non-NaN value per column — deduplicates titles
+
+    # Fill missing release_date from originally_available_at then drop unwanted columns
+    columns_to_drop = ['originally_available_at', 'titleSort', 'Position', 'Created',
+                       'Modified', 'Description', 'URL', 'Num Votes', 'Your Rating', 'Date Rated']
+    has_imdb_id['release_date'] = has_imdb_id['release_date'].fillna(has_imdb_id['originally_available_at'])  # fillna() fills empty values with the value from another column
+    has_imdb_id = has_imdb_id.drop(columns=columns_to_drop)  # drop() removes columns we don't need in the master CSV
+    no_imdb_id = no_imdb_id.drop(columns=columns_to_drop)  # same cleanup for rows that had no imdb_id
+
+    # Update source column to reflect which sources each title appears in
+    has_imdb_id.loc[has_imdb_id.index.isin(plex_and_imdb), 'source'] = 'plex_imdb'  # loc[] updates specific rows — index.isin() checks if the imdb_id is in the set
+    has_imdb_id.loc[has_imdb_id.index.isin(plex_and_tmdb), 'source'] = 'plex_tmdb'
+    has_imdb_id.loc[has_imdb_id.index.isin(imdb_and_tmdb), 'source'] = 'imdb_tmdb'
+    has_imdb_id.loc[has_imdb_id.index.isin(plex_and_imdb_and_tmdb), 'source'] = 'plex_imdb_tmdb'  # must be last — overwrites any two-source value set above
+    has_imdb_id = has_imdb_id.reset_index()  # after groupby, imdb_id becomes the index — reset_index() moves it back to a regular column
+
+    # Combine deduplicated titles with titles that had no imdb_id
+    return pd.concat([has_imdb_id, no_imdb_id])  # pd.concat() stacks DataFrames vertically — combines both groups back into one
+
 
 # main logic
 parser = argparse.ArgumentParser(description='The program creates a master csv file from different sources.')
@@ -115,26 +161,10 @@ args = parser.parse_args()
 input_files = get_input_files(args)
 loaded_files = load_all_files(input_files)
 combined_df = merge_dataframes(loaded_files)
+master_df = handle_duplicates(combined_df)
 
-# print(combined_df)
+# print(f"Total rows: {len(master_df)}")
+# print(master_df['imdb_id'].isna().sum(), "rows without imdb_id")
+# print(master_df[master_df['title'] == '2 Broke Girls'][['title', 'source']])
 
-# find a title that exists in both sources
-pd.set_option('display.max_columns', None)
-# print(combined_df[combined_df['imdb_id'] == 'tt1845307'])
-duplicate = combined_df[combined_df['imdb_id'] == 'tt0848228']
-for idx, row in duplicate.iterrows():
-    print(f"\n--- Row {idx} (source: {row['source']}) ---")
-    for col, val in row.items():
-        print(f"{col}: {val}")
-
-# for df in loaded_files:
-#     print(df['type'])
-
-# how many DataFrames
-# print(len(loaded_files))
-
-# # see each one briefly
-# for df in loaded_files:
-#     print(df.shape)  # rows and columns
-#     print(df.head(2))
-#     print()
+# master_df.to_csv('test_output.csv', index=False)
