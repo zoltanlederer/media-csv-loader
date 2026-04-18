@@ -150,8 +150,15 @@ def handle_duplicates(combined_df):
 
 
 def save_csv(master_df, output):
-    master_df.to_csv(output, index=False)
-
+    """ Save master csv file to default or user selected path """
+    try:
+        master_df.to_csv(output, index=False)
+    except OSError as error:
+        print(f'Could not create file: {error}')
+        sys.exit()
+    except Exception as error:
+        print(f'Something went wrong while writing the file: {error}')
+        sys.exit()
 
 
 # main logic
@@ -162,7 +169,7 @@ parser.add_argument('--imdb-movies', help='add the path of the exported (movie) 
 parser.add_argument('--imdb-tv', help='add the path of the exported (tv show) file from imdb')
 parser.add_argument('--tmdb-movies', help='add the path of the exported (movie) file from tmdb')
 parser.add_argument('--tmdb-tv', help='add the path of the exported (tv show) file from tmdb')
-parser.add_argument('--output', default='master.csv', help='path and filename to save the master CSV e.g. master.csv or /Users/zoli/data/master.csv')
+parser.add_argument('--output', default='master.csv', help='path and filename to save the master CSV e.g. "master.csv" or "/Users/zoli/data/master.csv"')
 args = parser.parse_args()
 
 output = args.output
@@ -172,10 +179,3 @@ loaded_files = load_all_files(input_files)
 combined_df = merge_dataframes(loaded_files)
 master_df = handle_duplicates(combined_df)
 save_csv(master_df, output)
-
-
-# print(f"Total rows: {len(master_df)}")
-# print(master_df['imdb_id'].isna().sum(), "rows without imdb_id")
-# print(master_df[master_df['title'] == '2 Broke Girls'][['title', 'source']])
-
-# master_df.to_csv('test_output.csv', index=False)
