@@ -127,7 +127,7 @@ def handle_duplicates(combined_df):
     no_imdb_id = sorted_df[sorted_df['imdb_id'].isna()]  # isna() returns True for empty values — keep only rows missing an imdb_id
 
     # Deduplicate by imdb_id, keeping first non-NaN value per column (Plex data takes priority)
-    has_imdb_id = has_imdb_id.groupby('imdb_id').first()  # group rows by imdb_id and keep the first non-NaN value per column — deduplicates titles
+    has_imdb_id = has_imdb_id.groupby('imdb_id').first()  # group by imdb_id and keep first non-NaN value per column — imdb_id becomes the index after this, no longer a regular column
 
     # Fill missing release_date from originally_available_at then drop unwanted columns
     columns_to_drop = ['originally_available_at', 'titleSort', 'Position', 'Created',
@@ -137,7 +137,7 @@ def handle_duplicates(combined_df):
     no_imdb_id = no_imdb_id.drop(columns=columns_to_drop)  # same cleanup for rows that had no imdb_id
 
     # Update source column to reflect which sources each title appears in
-    has_imdb_id.loc[has_imdb_id.index.isin(plex_and_imdb), 'source'] = 'plex_imdb'  # loc[] updates specific rows — index.isin() checks if the imdb_id is in the set
+    has_imdb_id.loc[has_imdb_id.index.isin(plex_and_imdb), 'source'] = 'plex_imdb'  # loc[] updates specific rows — index.isin() checks if the imdb_id (now the index after groupby) is in the set
     has_imdb_id.loc[has_imdb_id.index.isin(plex_and_tmdb), 'source'] = 'plex_tmdb'
     has_imdb_id.loc[has_imdb_id.index.isin(imdb_and_tmdb), 'source'] = 'imdb_tmdb'
     has_imdb_id.loc[has_imdb_id.index.isin(plex_and_imdb_and_tmdb), 'source'] = 'plex_imdb_tmdb'  # must be last — overwrites any two-source value set above
