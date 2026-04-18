@@ -76,6 +76,8 @@ def get_input_files(args):
     file_count = 0
     input_files = [] # e.g. [('imdb_tv', 'path/to/imdb_tv.csv'), ('plex_movies', 'path/to/plex_movies.csv')]
     for key, value in vars(args).items():
+        if key == 'output': # exclude --output from the loop
+            continue
         if value is not None:
             file_count += 1
             input_files.append((key, value))
@@ -147,6 +149,11 @@ def handle_duplicates(combined_df):
     return pd.concat([has_imdb_id, no_imdb_id])  # pd.concat() stacks DataFrames vertically — combines both groups back into one
 
 
+def save_csv(master_df, output):
+    master_df.to_csv(output, index=False)
+
+
+
 # main logic
 parser = argparse.ArgumentParser(description='The program creates a master csv file from different sources.')
 parser.add_argument('--plex-movies', help='add the path of the exported (movie) file from plex')
@@ -155,13 +162,17 @@ parser.add_argument('--imdb-movies', help='add the path of the exported (movie) 
 parser.add_argument('--imdb-tv', help='add the path of the exported (tv show) file from imdb')
 parser.add_argument('--tmdb-movies', help='add the path of the exported (movie) file from tmdb')
 parser.add_argument('--tmdb-tv', help='add the path of the exported (tv show) file from tmdb')
+parser.add_argument('--output', default='master.csv', help='path and filename to save the master CSV e.g. master.csv or /Users/zoli/data/master.csv')
 args = parser.parse_args()
 
+output = args.output
 
 input_files = get_input_files(args)
 loaded_files = load_all_files(input_files)
 combined_df = merge_dataframes(loaded_files)
 master_df = handle_duplicates(combined_df)
+save_csv(master_df, output)
+
 
 # print(f"Total rows: {len(master_df)}")
 # print(master_df['imdb_id'].isna().sum(), "rows without imdb_id")
