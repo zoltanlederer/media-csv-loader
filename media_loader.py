@@ -4,6 +4,7 @@ Media CSV Loader
 Takes multiple CSV files from different sources (Plex exports, IMDB and TMDB list exports), loads them with pandas, standardises the column names and data types so they match, detects duplicates (titles that appear in both lists), merges everything into one clean master CSV, and saves it. This master file becomes the foundation for all remaining projects.
 """
 
+import os
 import sys
 import argparse
 import pandas as pd
@@ -161,6 +162,40 @@ def save_csv(master_df, output):
         sys.exit()
 
 
+def print_summary(master_df, output):
+    """ Print a summary of the master CSV including total titles and breakdown by source. """
+    total = len(master_df['title'])
+    plex = len(master_df[master_df['source'] == 'plex'])
+    imdb = len(master_df[master_df['source'] == 'imdb'])
+    tmdb = len(master_df[master_df['source'] == 'tmdb'])
+    plex_imdb = len(master_df[master_df['source'] == 'plex_imdb'])
+    plex_tmdb = len(master_df[master_df['source'] == 'plex_tmdb'])
+    imdb_tmdb = len(master_df[master_df['source'] == 'imdb_tmdb'])
+    plex_imdb_tmdb = len(master_df[master_df['source'] == 'plex_imdb_tmdb'])
+
+
+    print(f"\n💾 Master CSV saved to {output}")
+    print(f"\n📊 {'Total titles:':<14} {total:>6}")
+
+
+    if plex:
+        print(f"    {'— plex only:':<14} {plex:>5}")
+    if imdb:
+        print(f"    {'— imdb only:':<14} {imdb:>5}")
+    if tmdb:
+        print(f"    {'— tmdb only:':<14} {tmdb:>5}")
+    if plex_imdb:
+        print(f"    {'— plex_imdb:':<14} {plex_imdb:>5}")
+    if plex_tmdb:
+        print(f"    {'— plex_tmdb:':<14} {plex_tmdb:>5}")
+    if imdb_tmdb:
+        print(f"    {'— imdb_tmdb:':<14} {imdb_tmdb:>5}")
+    if plex_imdb_tmdb:
+        print(f"    {'— plex_imdb_tmdb:':<14} {plex_imdb_tmdb:>5}")
+
+    print('\n')
+
+
 # main logic
 parser = argparse.ArgumentParser(description='The program creates a master csv file from different sources.')
 parser.add_argument('--plex-movies', help='add the path of the exported (movie) file from plex')
@@ -175,7 +210,17 @@ args = parser.parse_args()
 output = args.output
 
 input_files = get_input_files(args)
+
+print(f"\n🗂️ Loading {len(input_files)} files...")
+for key, value in input_files:
+    print(f"  — {os.path.basename(value)}")
+
+print("\n✏️  Standardising columns...")
 loaded_files = load_all_files(input_files)
+
+print("🔄 Deduplicating...")
 combined_df = merge_dataframes(loaded_files)
 master_df = handle_duplicates(combined_df)
+
 save_csv(master_df, output)
+print_summary(master_df, output)
