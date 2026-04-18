@@ -1,7 +1,7 @@
 """
 Media CSV Loader
 
-Takes multiple CSV files from different sources (Plex exports, IMDB and TMDB list exports), loads them with pandas, standardises the column names and data types so they match, detects duplicates (titles that appear in both lists), merges everything into one clean master CSV, and saves it. This master file becomes the foundation for all remaining projects.
+Takes multiple CSV files from different sources (Plex exports, IMDB and TMDB list exports), loads them with pandas, standardises the column names and data types so they match, detects duplicates across sources and combines the best available data into one row per title, merges everything into one clean master CSV, and saves it. This master file becomes the foundation for all remaining projects.
 """
 
 import os
@@ -30,7 +30,7 @@ def load_csv(filepath):
 
 
 def standardise_columns(df, source):
-    """ Create the standard column names for the Master CSV """
+    """ Rename columns to match the master CSV format and add source and type columns. """
     df_renamed = df.rename(columns={
         # IMDB columns
         'Const': 'imdb_id',
@@ -135,9 +135,12 @@ def handle_duplicates(combined_df):
     # Fill missing release_date from originally_available_at then drop unwanted columns
     columns_to_drop = ['originally_available_at', 'titleSort', 'Position', 'Created',
                        'Modified', 'Description', 'URL', 'Num Votes', 'Your Rating', 'Date Rated']
-    has_imdb_id['release_date'] = has_imdb_id['release_date'].fillna(has_imdb_id['originally_available_at'])  # fillna() fills empty values with the value from another column
-    has_imdb_id = has_imdb_id.drop(columns=columns_to_drop)  # drop() removes columns we don't need in the master CSV
-    no_imdb_id = no_imdb_id.drop(columns=columns_to_drop)  # same cleanup for rows that had no imdb_id
+    
+    if 'release_date' in has_imdb_id.columns and 'originally_available_at' in has_imdb_id.columns:  # both columns must exist — release_date comes from IMDB/TMDB, originally_available_at from Plex
+        has_imdb_id['release_date'] = has_imdb_id['release_date'].fillna(has_imdb_id['originally_available_at'])  # fillna() fills empty release_date values with originally_available_at as fallback
+
+    has_imdb_id = has_imdb_id.drop(columns=columns_to_drop, errors='ignore')  # drop() removes columns we don't need in the master CSV; errors='ignore' skips columns that don't exist — safe when not all sources are provided
+    no_imdb_id = no_imdb_id.drop(columns=columns_to_drop, errors='ignore')  # same cleanup for rows that had no imdb_id
 
     # Update source column to reflect which sources each title appears in
     has_imdb_id.loc[has_imdb_id.index.isin(plex_and_imdb), 'source'] = 'plex_imdb'  # loc[] updates specific rows — index.isin() checks if the imdb_id (now the index after groupby) is in the set
@@ -173,10 +176,8 @@ def print_summary(master_df, output):
     imdb_tmdb = len(master_df[master_df['source'] == 'imdb_tmdb'])
     plex_imdb_tmdb = len(master_df[master_df['source'] == 'plex_imdb_tmdb'])
 
-
     print(f"\n💾 Master CSV saved to {output}")
     print(f"\n📊 {'Total titles:':<14} {total:>6}")
-
 
     if plex:
         print(f"    {'— plex only:':<14} {plex:>5}")
@@ -208,7 +209,6 @@ parser.add_argument('--output', default='master.csv', help='path and filename to
 args = parser.parse_args()
 
 output = args.output
-
 input_files = get_input_files(args)
 
 print(f"\n🗂️ Loading {len(input_files)} files...")
